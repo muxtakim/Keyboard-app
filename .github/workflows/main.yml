@@ -1,0 +1,43 @@
+name: Android CI Build from Zip
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Unzip, Build and Collect APK
+      run: |
+        # জিপ ফাইলটি আনজিপ করা হচ্ছে
+        unzip -q *.zip -d temp_project
+        
+        # প্রজেক্টের সঠিক ফোল্ডারটি খুঁজে বের করে বিল্ড করা হচ্ছে
+        PROJECT_DIR=$(dirname $(find temp_project -name "gradlew" | head -n 1))
+        cd "$PROJECT_DIR"
+        chmod +x gradlew
+        ./gradlew assembleDebug
+        
+        # তৈরি হওয়া APK ফাইলটি আলাদা ফোল্ডারে কপি করা হচ্ছে
+        cd ${{ github.workspace }}
+        mkdir -p apk_output
+        find temp_project -name "*.apk" -exec cp {} apk_output/ \;
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: my-app-debug-apk
+        path: apk_output/*.apk
+        
